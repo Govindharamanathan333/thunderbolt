@@ -25,21 +25,35 @@ pipeline {
             steps {
                 dir('backend') {
                     script {
-                        def pythonInstalled = sh(script: 'which python3', returnStatus: true)
-                        if (pythonInstalled != 0) {
-                            sh 'sudo apt-get update && sudo apt-get install -y python3'
+                        def dockerInstalled = sh(script: 'which docker', returnStatus: true)
+                        if (dockerInstalled != 0) {
+                            sh 'sudo apt-get update && sudo apt-get install -y docker.io'
+                        }
+                        
+                        def networkExists = sh(script: 'sudo docker network ls --filter name=maze --format "{{.Name}}"', returnStdout: true).trim()
+                        if (!networkExists) {
+                            sh 'sudo docker network create maze'
+                        }
+
+                        def mongoImageExists = sh(script: 'sudo docker images -q mongo', returnStdout: true).trim()
+                        if (!mongoImageExists) {
+                            sh 'sudo docker pull mongo'
+                        }
+
+                        def mongoContainerExists = sh(script: 'sudo docker ps -a --filter name=mymongo --format "{{.Names}}"', returnStdout: true).trim()
+                        if (!mongoContainerExists) {
+                            sh 'sudo docker run -d --name mymongo --network maze -p 27017:27017 mongo'
                         }
                     }
 
                     sh '''
-                        python3 -m venv env
-                        . env/bin/activate
+                        sudo docker build -t mazebackend .
+                        sudo docker run -d -p 5006:5006 --name mazeback --network maze mazebackend 
                     '''
-                    sh 'pip install -r requirements.txt'
 
                     script {
                         try {
-                            sh 'python3 wsgi.py &'
+                            sh 'sudo docker ps'
                             slackSend(channel: SLACK_CHANNEL, message: "Backend deployment successful")
                         } catch (Exception e) {
                             slackSend(channel: SLACK_CHANNEL, message: "Backend deployment failed: ${e}")
@@ -54,26 +68,18 @@ pipeline {
             agent {
                 label 'slavenode1' // Replace with your slave node label
             }
-            environment {
-                NODE_VERSION = 'v22.5.1' // Replace with your Node.js version
-                NODE_PATH = "/home/node1/.nvm/versions/node/v22.5.1/bin"
-            }
             steps {
                 dir('front_app') {
                     script {
-                        env.PATH = "/home/node1/.nvm/versions/node/v22.5.1/bin:$env.PATH"
-                        def npmInstalled = sh(script: 'which npm', returnStatus: true)
-                        if (npmInstalled != 0) {
-                            // Install npm if not found
-                            // sh 'sudo apt-get update && sudo apt-get install -y npm'
-                        }
+                        sh 'sudo apt-get update'
+                        sh 'sudo docker build -t mazefrontend .'
                     }
 
-                    sh 'npm install'
+                    sh 'sudo docker run -d -p 3001:3001 --name mazefront --network maze mazefrontend'
 
                     script {
                         try {
-                            sh 'npm run dev &'
+                            sh 'sudo docker ps'
                             slackSend(channel: SLACK_CHANNEL, message: "Frontend deployment successful")
                         } catch (Exception e) {
                             slackSend(channel: SLACK_CHANNEL, message: "Frontend deployment failed: ${e}")
