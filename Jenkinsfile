@@ -91,7 +91,6 @@ pipeline {
                         sudo docker run --rm \
                           -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                           -e SONAR_LOGIN="${SONAR_LOGIN}" \
-                          -v "/home/node1/workspace/freestyledocker:/usr/src" \
                           sonarsource/sonar-scanner-cli \
                           sonar-scanner \
                           -Dsonar.projectKey=${PROJECT_KEY} \
