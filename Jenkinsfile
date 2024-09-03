@@ -28,8 +28,6 @@ pipeline {
             }
         }
 
-        
-
         stage('Build Frontend Docker Image') {
             steps {
                 script {
@@ -42,10 +40,6 @@ pipeline {
             }
         }
 
-        
-
-        
-
         stage('SonarQube Code Analysis') {
             steps {
                 script {
@@ -57,7 +51,8 @@ pipeline {
                           sonarsource/sonar-scanner-cli \
                           sonar-scanner \
                           -Dsonar.projectKey=${PROJECT_KEY} \
-                          -Dsonar.sources=backend,front_app \
+                          -Dsonar.sources=front_app \
+                          -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/static/**,**/Dockerfile,**/README.md,**/svelte.config.js,**/tailwind.config.js,**/vite.config.js,**/postcss.config.js \
                           -Dsonar.projectBaseDir=/usr/src \
                           -Dsonar.login=${SONAR_LOGIN} \
                           -X
@@ -67,30 +62,18 @@ pipeline {
             }
         }
 
-        
-
-        stage('SonarQube Code Analysis') {
-    steps {
-        script {
-            sh """
-                sudo docker run --rm \
-                  -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
-                  -e SONAR_LOGIN="${SONAR_LOGIN}" \
-                  -v "\$WORKSPACE:/usr/src" \
-                  sonarsource/sonar-scanner-cli \
-                  sonar-scanner \
-                  -Dsonar.projectKey=${PROJECT_KEY} \
-                  -Dsonar.sources=backend,front_app \
-                  -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/static/**,**/Dockerfile,**/README.md,**/svelte.config.js,**/tailwind.config.js,**/vite.config.js,**/postcss.config.js \
-                  -Dsonar.projectBaseDir=/usr/src \
-                  -Dsonar.login=${SONAR_LOGIN} \
-                  -X
-            """
-            slackSend(channel: SLACK_CHANNEL, message: "SonarQube analysis completed successfully.")
+        stage('Push Frontend Image to Nexus') {
+            steps {
+                script {
+                    docker.withRegistry(DOCKER_REGISTRY, DOCKER_CREDENTIALS_ID) {
+                        docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("latest")
+                        docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("${env.BUILD_NUMBER}")
+                    }
+                    slackSend(channel: SLACK_CHANNEL, message: "Frontend image pushed to Nexus.")
+                }
+            }
         }
     }
-}
-
 
     post {
         always {
