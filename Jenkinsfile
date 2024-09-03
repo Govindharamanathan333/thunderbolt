@@ -7,8 +7,8 @@ pipeline {
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // The ID of the Jenkins credentials storing the token
         GIT_REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt.git'
         SONAR_HOST_URL = "http://10.10.30.18:9000"
-        SONAR_LOGIN = "sqp_1aaaae9c5c943750f88e9a1bd58fcb1c93217b70"
-        PROJECT_KEY = "thunder-pipe"
+        SONAR_LOGIN = "sqp_ffd5d52d2c974df64d6e94da40470fa9728ff02e"
+        PROJECT_KEY = "thunderbolt"
     }
     stages {
         stage('Clone repository') {
