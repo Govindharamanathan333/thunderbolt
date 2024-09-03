@@ -55,7 +55,7 @@ pipeline {
                             if [ \$(sudo docker ps -a --filter name=${BACKEND_CONTAINER} --format "{{.Names}}") ]; then
                                 sudo docker rm -f ${BACKEND_CONTAINER}
                             fi
-                            sudo docker run -d -p 5006:5006 --name ${BACKEND_CONTAINER} --network maze ${BACKEND_IMAGE}
+                            
                         """
                     }
                     script {
@@ -83,7 +83,7 @@ pipeline {
                             if [ \$(sudo docker ps -a --filter name=${FRONTEND_CONTAINER} --format "{{.Names}}") ]; then
                                 sudo docker rm -f ${FRONTEND_CONTAINER}
                             fi
-                            sudo docker run -d -p 3001:3001 --name ${FRONTEND_CONTAINER} --network maze ${FRONTEND_IMAGE}
+                            
                         """
                     }
                     script {
