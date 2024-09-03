@@ -11,7 +11,7 @@ pipeline {
         DOCKER_REGISTRY = "http://10.10.30.22:8084"
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
-        SLACK_CREDENTIALS_ID = 'slack_token_aug19' // Slack token credentials
+        SLACK_CREDENTIALS_ID = 'slack_token_aug19' // Replace this with the correct ID
         SONAR_HOST_URL = "http://10.10.30.18:9000"
         SONAR_LOGIN = "sqp_ffd5d52d2c974df64d6e94da40470fa9728ff02e"
         PROJECT_KEY = "thunderbolt"
@@ -23,7 +23,7 @@ pipeline {
                 git url: GIT_REPO, branch: 'main'
                 script {
                     def gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    slackSend(channel: SLACK_CHANNEL, message: "Git repository cloned. Commit: ${gitCommit}")
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Git repository cloned. Commit: ${gitCommit}")
                 }
             }
         }
@@ -35,7 +35,7 @@ pipeline {
                     dir('front_app') {
                         sh "sudo docker build -t ${FRONTEND_IMAGE}:v${buildNumber} ."
                     }
-                    slackSend(channel: SLACK_CHANNEL, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${buildNumber}")
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${buildNumber}")
                 }
             }
         }
@@ -57,7 +57,7 @@ pipeline {
                           -Dsonar.login=${SONAR_LOGIN} \
                           -X
                     """
-                    slackSend(channel: SLACK_CHANNEL, message: "SonarQube analysis completed successfully.")
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "SonarQube analysis completed successfully.")
                 }
             }
         }
@@ -69,7 +69,7 @@ pipeline {
                         docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("latest")
                         docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("${env.BUILD_NUMBER}")
                     }
-                    slackSend(channel: SLACK_CHANNEL, message: "Frontend image pushed to Nexus.")
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image pushed to Nexus.")
                 }
             }
         }
@@ -80,14 +80,14 @@ pipeline {
             cleanWs()
             script {
                 def serverStatus = sh(script: 'curl -Is http://localhost:8000 | head -n 1', returnStdout: true).trim()
-                slackSend(channel: SLACK_CHANNEL, message: "Pipeline finished. Server status: ${serverStatus}")
+                slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Pipeline finished. Server status: ${serverStatus}")
             }
         }
         success {
-            slackSend(channel: SLACK_CHANNEL, message: "Deployment successful.")
+            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment successful.")
         }
         failure {
-            slackSend(channel: SLACK_CHANNEL, message: "Deployment failed.")
+            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment failed.")
         }
     }
 }
