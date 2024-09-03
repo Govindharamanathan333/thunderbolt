@@ -11,7 +11,7 @@ pipeline {
         DOCKER_REGISTRY = "http://10.10.30.22:8084"
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
-        SLACK_CREDENTIALS_ID = '8dgg3XNduLJGAkDODdeuZMQN' // Slack token credentials
+        SLACK_CREDENTIALS_ID = 'slack_token_aug19' // Slack token credentials
         SONAR_HOST_URL = "http://10.10.30.18:9000"
         SONAR_LOGIN = "sqp_ffd5d52d2c974df64d6e94da40470fa9728ff02e"
         PROJECT_KEY = "thunderbolt"
