@@ -9,6 +9,11 @@ pipeline {
         SONAR_HOST_URL = "http://10.10.30.18:9000"
         SONAR_LOGIN = "sqp_ffd5d52d2c974df64d6e94da40470fa9728ff02e"
         PROJECT_KEY = "thunderbolt"
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        BACKEND_IMAGE = "mazebackend:${BUILD_NUMBER}"
+        FRONTEND_IMAGE = "mazefrontend:${BUILD_NUMBER}"
+        BACKEND_CONTAINER = "mazeback-${BUILD_NUMBER}"
+        FRONTEND_CONTAINER = "mazefront-${BUILD_NUMBER}"
     }
     stages {
         stage('Clone repository') {
@@ -24,14 +29,14 @@ pipeline {
         }
         stage('Backend Deployment on Slave') {
             agent {
-                label 'worker1' // Replace with your slave node label
+                label 'worker1'
             }
             steps {
                 dir('backend') {
                     script {
                         def dockerInstalled = sh(script: 'which docker', returnStatus: true)
                         if (dockerInstalled != 0) {
-                            sh 'sudo apt-get update && sudo apt-get install -y docker.io'
+                            error "Docker is not installed on the agent. Please install Docker."
                         }
                         def networkExists = sh(script: 'sudo docker network ls --filter name=maze --format "{{.Name}}"', returnStdout: true).trim()
                         if (!networkExists) {
@@ -45,11 +50,14 @@ pipeline {
                         if (!mongoContainerExists) {
                             sh 'sudo docker run -d --name mymongo --network maze -p 27017:27017 mongo'
                         }
+                        sh "sudo docker build -t ${BACKEND_IMAGE} ."
+                        sh """
+                            if [ \$(sudo docker ps -a --filter name=${BACKEND_CONTAINER} --format "{{.Names}}") ]; then
+                                sudo docker rm -f ${BACKEND_CONTAINER}
+                            fi
+                            sudo docker run -d -p 5006:5006 --name ${BACKEND_CONTAINER} --network maze ${BACKEND_IMAGE}
+                        """
                     }
-                    sh '''
-                        sudo docker build -t mazebackend .
-                        sudo docker run -d -p 5006:5006 --name mazeback --network maze mazebackend
-                    '''
                     script {
                         try {
                             sh 'sudo docker ps'
@@ -64,15 +72,20 @@ pipeline {
         }
         stage('Frontend Deployment on Slave') {
             agent {
-                label 'worker1' // Replace with your slave node label
+                label 'worker1'
             }
             steps {
                 dir('front_app') {
                     script {
                         sh 'sudo apt-get update'
-                        sh 'sudo docker build -t mazefrontend .'
+                        sh "sudo docker build -t ${FRONTEND_IMAGE} ."
+                        sh """
+                            if [ \$(sudo docker ps -a --filter name=${FRONTEND_CONTAINER} --format "{{.Names}}") ]; then
+                                sudo docker rm -f ${FRONTEND_CONTAINER}
+                            fi
+                            sudo docker run -d -p 3001:3001 --name ${FRONTEND_CONTAINER} --network maze ${FRONTEND_IMAGE}
+                        """
                     }
-                    sh 'sudo docker run -d -p 3001:3001 --name mazefront --network maze mazefrontend'
                     script {
                         try {
                             sh 'sudo docker ps'
@@ -87,7 +100,7 @@ pipeline {
         }
         stage('SonarQube Code Analysis') {
             agent {
-                label 'worker1' // Replace with your slave node label
+                label 'worker1'
             }
             steps {
                 script {
