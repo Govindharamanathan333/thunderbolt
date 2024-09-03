@@ -1,7 +1,7 @@
 pipeline {
     agent {
-    label 'worker1'
-  }
+        label 'worker1'
+    }
     environment {
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // The ID of the Jenkins credentials storing the token
@@ -13,8 +13,10 @@ pipeline {
     stages {
         stage('Clone repository') {
             steps {
-                git GIT_REPO_URL
                 script {
+                    checkout([$class: 'GitSCM',
+                              userRemoteConfigs: [[url: "${GIT_REPO_URL}"]],
+                              branches: [[name: '*/main']]])
                     def gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     slackSend(channel: SLACK_CHANNEL, message: "Git repository cloned. Commit: ${gitCommit}")
                 }
