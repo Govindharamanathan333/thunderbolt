@@ -22,7 +22,7 @@ pipeline {
         }
         stage('Backend Deployment on Slave') {
             agent {
-                label 'worker2' // Replace with your slave node label
+                label 'worker1' // Replace with your slave node label
             }
             steps {
                 dir('backend') {
@@ -62,7 +62,7 @@ pipeline {
         }
         stage('Frontend Deployment on Slave') {
             agent {
-                label 'worker2' // Replace with your slave node label
+                label 'worker1' // Replace with your slave node label
             }
             steps {
                 dir('front_app') {
@@ -85,7 +85,7 @@ pipeline {
         }
         stage('SonarQube Code Analysis') {
             agent {
-                label 'worker2' // Replace with your slave node label
+                label 'worker1' // Replace with your slave node label
             }
             steps {
                 script {
