@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label "worker1"
+    }
 
     environment {
         BACKEND_IMAGE = "thunderbolt_backend"
