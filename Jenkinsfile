@@ -1,5 +1,7 @@
 pipeline {
-    agent worker1
+    agent {
+    label 'worker1'
+  }
     environment {
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // The ID of the Jenkins credentials storing the token
