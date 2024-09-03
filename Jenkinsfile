@@ -6,7 +6,7 @@ pipeline {
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // The ID of the Jenkins credentials storing the token
         GIT_REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt.git'
-        SONAR_HOST_URL = "http://192.168.0.191:9000"
+        SONAR_HOST_URL = "http://10.10.30.18:9000"
         SONAR_LOGIN = "sqp_1aaaae9c5c943750f88e9a1bd58fcb1c93217b70"
         PROJECT_KEY = "thunder-pipe"
     }
