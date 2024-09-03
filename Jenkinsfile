@@ -9,7 +9,7 @@ pipeline {
         GIT_REPO = "https://github.com/Govindharamanathan333/thunderbolt.git"
         
         DOCKER_REGISTRY = "http://10.10.30.22:8084"
-        DOCKER_CREDENTIALS_ID = "nexus_credentials"
+        DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = '8dgg3XNduLJGAkDODdeuZMQN' // Slack token credentials
         SONAR_HOST_URL = "http://10.10.30.18:9000"
@@ -20,7 +20,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git url: GIT_REPO, branch: 'main', credentialsId: GIT_CREDENTIALS_ID
+                git url: GIT_REPO, branch: 'main'
                 script {
                     def gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     slackSend(channel: SLACK_CHANNEL, message: "Git repository cloned. Commit: ${gitCommit}")
