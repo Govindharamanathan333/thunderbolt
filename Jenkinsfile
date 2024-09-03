@@ -8,7 +8,7 @@ pipeline {
         FRONTEND_IMAGE = "thunderbolt_frontend"
         GIT_REPO = "https://github.com/Govindharamanathan333/thunderbolt.git"
         
-        DOCKER_REGISTRY = "http://10.10.30.22:8084"
+        DOCKER_REGISTRY = "http://10.10.30.22:8085"
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // Replace this with the correct ID
@@ -62,18 +62,19 @@ pipeline {
             }
         }
 
-        stage('Push Frontend Image to Nexus') {
-            steps {
-                script {
-                    docker.withRegistry(DOCKER_REGISTRY, DOCKER_CREDENTIALS_ID) {
-                        docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("latest")
-                        docker.image("${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}").push("${env.BUILD_NUMBER}")
-                    }
-                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image pushed to Nexus.")
-                }
+        stage('Push Docker Image to Nexus') {
+    steps {
+        withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'NEXUS_USERNAME', passwordVariable: 'NEXUS_PASSWORD')]) {
+            script {
+                sh '''
+                  sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}
+                  sudo docker push ${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}
+                '''
             }
         }
     }
+}
+
 
     post {
         always {
