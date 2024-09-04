@@ -63,18 +63,23 @@ pipeline {
         }
 
         stage('Push Docker Image to Nexus') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'NEXUS_USERNAME', passwordVariable: 'NEXUS_PASSWORD')]) {
-                    script {
-                        sh """
-                          sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}
-                          sudo docker push ${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}
-                        """
-                    }
-                }
+    steps {
+        withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'NEXUS_USERNAME', passwordVariable: 'NEXUS_PASSWORD')]) {
+            script {
+                def taggedImage = "${DOCKER_REGISTRY}/v${env.BUILD_NUMBER}"
+
+                // Tag the Docker image
+                sh "sudo docker tag ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ${taggedImage}"
+
+                // Log in to the Docker registry
+                sh "sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
+
+                // Push the tagged Docker image to Nexus
+                sh "sudo docker push ${taggedImage}"
             }
         }
     }
+}
 
     post {
         always {
