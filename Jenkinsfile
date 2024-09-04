@@ -106,7 +106,7 @@ pipeline {
                             
                             git add manifest/deployment.yaml
                             git commit -m "Update deployment image to version v${env.BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${YAML_REPO_URL.replace('https://github.com/', '')} HEAD:${YAML_REPO_BRANCH}
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/manifest.git HEAD:${YAML_REPO_BRANCH}
                         """
 
                         slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Updated Kubernetes deployment file with image: ${fullImageName}")
