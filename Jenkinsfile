@@ -70,4 +70,21 @@ pipeline {
             slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment failed.")
         }
     }
+    stage('Update Deployment File') {
+        steps {
+            withCredentials([string(credentialsId: 'git', variable: 'GITHUB_TOKEN')]) {
+                sh '''
+                    git config user.email "govindharamanathan@saptanglabs.com"
+                    git config user.name "${GIT_USER_NAME}"
+                    
+                    # Replace any existing image tag with the new IMAGE_TAG
+                    sed -i 's|image:.*|image: ${fullImageName}|g'
+                    git add .
+                    
+                    git commit -m "Update deployment image to version ${IMAGE_TAG}"
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${} HEAD:main
+                '''
+            }
+        }
+    }
 }
