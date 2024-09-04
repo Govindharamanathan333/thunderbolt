@@ -57,21 +57,7 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            cleanWs()
-            script {
-                def serverStatus = sh(script: 'curl -Is http://localhost:8000 | head -n 1', returnStdout: true).trim()
-                slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Pipeline finished. Server status: ${serverStatus}")
-            }
-        }
-        success {
-            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment successful.")
-        }
-        failure {
-            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment failed.")
-        }
-    }
+    
     stage('Update Deployment File') {
         steps {
             withCredentials([string(credentialsId: 'git', variable: 'GITHUB_TOKEN')]) {
@@ -87,6 +73,21 @@ pipeline {
                     git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${} HEAD:main
                 '''
             }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+            script {
+                def serverStatus = sh(script: 'curl -Is http://localhost:8000 | head -n 1', returnStdout: true).trim()
+                slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Pipeline finished. Server status: ${serverStatus}")
+            }
+        }
+        success {
+            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment successful.")
+        }
+        failure {
+            slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Deployment failed.")
         }
     }
 }
