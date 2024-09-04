@@ -9,6 +9,8 @@ pipeline {
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins'
         SLACK_CREDENTIALS_ID = 'slack_token_aug19'
+        GIT_REPO_NAME = "manifest"
+        GIT_USER_NAME = "Govindharamanathan333"
     }
 
     stages {
