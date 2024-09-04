@@ -8,7 +8,7 @@ pipeline {
         FRONTEND_IMAGE = "thunderbolt_frontend"
         GIT_REPO = "https://github.com/Govindharamanathan333/thunderbolt.git"
         
-        DOCKER_REGISTRY = "http://10.10.30.22:8085"
+        DOCKER_REGISTRY = "10.10.30.22:8085/thunderbolt_frontend/"
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins' // Replace with your Slack channel
         SLACK_CREDENTIALS_ID = 'slack_token_aug19' // Replace this with the correct ID
