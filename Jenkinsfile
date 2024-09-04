@@ -9,17 +9,24 @@ pipeline {
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins'
         SLACK_CREDENTIALS_ID = 'slack_token_aug19'
-        GIT_REPO_NAME = "manifest"
+        CODE_REPO_URL = "https://github.com/Govindharamanathan333/thunderbolt.git"
+        CODE_REPO_BRANCH = "main"
+        YAML_REPO_URL = "https://github.com/Govindharamanathan333/manifest.git"
+        YAML_REPO_BRANCH = "main"
         GIT_USER_NAME = "Govindharamanathan333"
+        GIT_EMAIL = "govindharamanathan@saptanglabs.com"
+        SONAR_HOST_URL = "http://10.10.30.18:9000"
+        SONAR_LOGIN = "sqp_ffd5d52d2c974df64d6e94da40470fa9728ff02e"
+        PROJECT_KEY = "thunderbolt"
     }
 
     stages {
-        stage('Clone Repository') {
+        stage('Clone Code Repository') {
             steps {
-                git url: "https://github.com/Govindharamanathan333/thunderbolt.git", branch: 'main'
+                git url: "${CODE_REPO_URL}", branch: "${CODE_REPO_BRANCH}"
                 script {
                     def gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Git repository cloned. Commit: ${gitCommit}")
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Code repository cloned. Commit: ${gitCommit}")
                 }
             }
         }
@@ -31,6 +38,28 @@ pipeline {
                         sh "sudo docker build -t ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ."
                     }
                     slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}")
+                }
+            }
+        }
+
+        stage('SonarQube Code Analysis') {
+            steps {
+                script {
+                    sh """
+                        sudo docker run --rm \
+                          -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
+                          -e SONAR_LOGIN="${SONAR_LOGIN}" \
+                          -v "\$WORKSPACE:/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          sonar-scanner \
+                          -Dsonar.projectKey=${PROJECT_KEY} \
+                          -Dsonar.sources=front_app \
+                          -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/static/**,**/Dockerfile,**/README.md,**/svelte.config.js,**/tailwind.config.js,**/vite.config.js,**/postcss.config.js \
+                          -Dsonar.projectBaseDir=/usr/src \
+                          -Dsonar.login=${SONAR_LOGIN} \
+                          -X
+                    """
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "SonarQube analysis completed successfully.")
                 }
             }
         }
@@ -55,26 +84,38 @@ pipeline {
                 }
             }
         }
-    }
 
-    
-    stage('Update Deployment File') {
-        steps {
-            withCredentials([string(credentialsId: 'git', variable: 'GITHUB_TOKEN')]) {
-                sh '''
-                    git config user.email "govindharamanathan@saptanglabs.com"
-                    git config user.name "${GIT_USER_NAME}"
-                    
-                    # Replace any existing image tag with the new IMAGE_TAG
-                    sed -i 's|image:.*|image: ${fullImageName}|g'
-                    git add .
-                    
-                    git commit -m "Update deployment image to version ${IMAGE_TAG}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${} HEAD:main
-                '''
+        stage('Clone YAML Repository') {
+            steps {
+                git url: "${YAML_REPO_URL}", branch: "${YAML_REPO_BRANCH}"
+            }
+        }
+
+        stage('Update Deployment File') {
+            steps {
+                withCredentials([string(credentialsId: 'git', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                        def fullImageName = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}"
+
+                        sh """
+                            git config user.email "${GIT_EMAIL}"
+                            git config user.name "${GIT_USER_NAME}"
+                            
+                            # Replace any existing image tag with the new image tag in the deployment file
+                            sed -i 's|image:.*|image: ${fullImageName}|g' manifest/deployment.yaml
+                            
+                            git add manifest/deployment.yaml
+                            git commit -m "Update deployment image to version v${env.BUILD_NUMBER}"
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${YAML_REPO_URL.replace('https://github.com/', '')} HEAD:${YAML_REPO_BRANCH}
+                        """
+
+                        slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Updated Kubernetes deployment file with image: ${fullImageName}")
+                    }
+                }
             }
         }
     }
+
     post {
         always {
             cleanWs()
