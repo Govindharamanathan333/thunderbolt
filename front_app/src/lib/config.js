@@ -2,7 +2,7 @@
 
 
 export function basepath() {
-    let urlvalue = `http://10.10.30.12:5006`;
+    let urlvalue = `http://10.10.30.12:30999`;
     console.log(urlvalue)
     return urlvalue;
   }
@@ -10,7 +10,7 @@ export function basepath() {
 
 
   export function maindashboard() {
-    let urlvalue = `http://10.10.30.12:5006`;
+    let urlvalue = `http://10.10.30.12:30999`;
     console.log(urlvalue)
     return urlvalue;
   }
