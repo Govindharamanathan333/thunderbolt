@@ -147,16 +147,17 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'git', variable: 'GITHUB_TOKEN')]) {
                     script {
-                        def fullImageName = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}"
-
+                        def fullImageName_front = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}"
+                        def fullImageName_back = "${DOCKER_REGISTRY}/${BACKEND_IMAGE}:v${env.BUILD_NUMBER}"
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER_NAME}"
                             
                             # Replace any existing image tag with the new image tag in the deployment file
-                            sed -i 's|image:.*|image: ${fullImageName}|g' manifest/deployment.yaml
-                            
+                            sed -i 's|image:.*|image: ${fullImageName_front}|g' manifest/deployment.yaml
+                            sed -i 's|image:.*|image: ${fullImageName_back}|g' backend/deploy.yaml
                             git add manifest/deployment.yaml
+                            git add backend/deploy.yaml
                             git commit -m "Update deployment image to version v${env.BUILD_NUMBER}"
                             git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/manifest.git HEAD:${YAML_REPO_BRANCH}
                         """
