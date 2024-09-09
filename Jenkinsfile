@@ -149,6 +149,7 @@ pipeline {
                     script {
                         def fullImageName_front = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}"
                         def fullImageName_back = "${DOCKER_REGISTRY}/${BACKEND_IMAGE}:v${env.BUILD_NUMBER}"
+                        def fullImageName = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} and ${DOCKER_REGISTRY}/${BACKEND_IMAGE}:v${env.BUILD_NUMBER}"
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER_NAME}"
