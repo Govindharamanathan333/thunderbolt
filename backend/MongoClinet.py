@@ -5,9 +5,9 @@ from pprint import pprint
 from mongoengine import connect                                                                             
 
 
-client = MongoClient('mongodb://10.10.30.12:30018')
-# client = MongoClient('mongodb://10.10.30.12:30018')
-# client = MongoClient('mongodb://mongo-cdat:30018')
+client = MongoClient('mongodb://10.10.30.12:30017')
+# client = MongoClient('mongodb://10.10.30.12:30017')
+# client = MongoClient('mongodb://mongo-cdat:30017')
 
 
 class CDAT():
