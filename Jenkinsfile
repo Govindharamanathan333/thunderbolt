@@ -5,6 +5,7 @@ pipeline {
 
     environment {
         FRONTEND_IMAGE = "thunderbolt_frontend"
+        BACKEND_IMAGE = "thunderbolt_backend"
         DOCKER_REGISTRY = "10.10.30.22:8085"
         DOCKER_CREDENTIALS_ID = "nexus"
         SLACK_CHANNEL = 'jenkins'
@@ -41,10 +42,23 @@ pipeline {
                 }
             }
         }
+        
+        stage('Build Backend Docker Image') {
+            steps {
+                script {
+                    def buildNumber = env.BUILD_NUMBER
+                    dir('backend') {
+                        sh "sudo docker build -t ${BACKEND_IMAGE}:v${buildNumber} ."
+                    }
+                    slackSend(channel: SLACK_CHANNEL, message: "Backend image build successful: ${BACKEND_IMAGE}:v${buildNumber}")
+                }
+            }
+        }
 
         stage('SonarQube Code Analysis') {
             steps {
                 script {
+                    // Frontend SonarQube Analysis
                     sh """
                         sudo docker run --rm \
                           -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
@@ -59,7 +73,25 @@ pipeline {
                           -Dsonar.login=${SONAR_LOGIN} \
                           -X
                     """
-                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "SonarQube analysis completed successfully.")
+                    
+                    // Backend SonarQube Analysis for Python Files
+                    sh """
+                        sudo docker run --rm \
+                          -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
+                          -e SONAR_LOGIN="${SONAR_LOGIN}" \
+                          -v "\$WORKSPACE:/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          sonar-scanner \
+                          -Dsonar.projectKey=${PROJECT_KEY} \
+                          -Dsonar.sources=backend \
+                          -Dsonar.inclusions=**/*.py \
+                          -Dsonar.exclusions=backend/env/** \
+                          -Dsonar.projectBaseDir=/usr/src \
+                          -Dsonar.login=${SONAR_LOGIN} \
+                          -X
+                    """
+
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "SonarQube analysis completed successfully for frontend and backend.")
                 }
             }
         }
@@ -72,6 +104,26 @@ pipeline {
 
                         // Tag the Docker image with the build number
                         sh "sudo docker tag ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
+
+                        // Log in to the Docker registry
+                        sh "sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
+
+                        // Push the tagged Docker image to Nexus
+                        sh "sudo docker push ${fullImageName}"
+
+                        slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Docker image pushed successfully: ${fullImageName}")
+                    }
+                }
+            }
+        }
+        stage('Tag and Push Backend Docker Image to Nexus') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'NEXUS_USERNAME', passwordVariable: 'NEXUS_PASSWORD')]) {
+                    script {
+                        def fullImageName = "${DOCKER_REGISTRY}/${BACKEND_IMAGE}:v${env.BUILD_NUMBER}"
+
+                        // Tag the Docker image with the build number
+                        sh "sudo docker tag ${BACKEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
 
                         // Log in to the Docker registry
                         sh "sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
