@@ -63,6 +63,7 @@ pipeline {
                           -Dsonar.sources=backend \
                           -Dsonar.inclusions=**/*.py \
                           -Dsonar.exclusions=backend/env/** \
+                          -Dsonar.python.version=3.1 \
                           -Dsonar.projectBaseDir=/usr/src \
                           -Dsonar.login=${SONAR_LOGIN} \
                           -X
