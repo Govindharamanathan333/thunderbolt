@@ -32,30 +32,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    dir('front_app') {
-                        sh "sudo docker build -t ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ."
-                    }
-                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}")
-                }
-            }
-        }
-        
-        stage('Build Backend Docker Image') {
-            steps {
-                script {
-                    def buildNumber = env.BUILD_NUMBER
-                    dir('backend') {
-                        sh "sudo docker build -t ${BACKEND_IMAGE}:v${buildNumber} ."
-                    }
-                    slackSend(channel: SLACK_CHANNEL, message: "Backend image build successful: ${BACKEND_IMAGE}:v${buildNumber}")
-                }
-            }
-        }
-
-        stage('SonarQube Code Analysis') {
+    stage('SonarQube Code Analysis') {
             steps {
                 script {
                     // Frontend SonarQube Analysis
@@ -95,6 +72,30 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('front_app') {
+                        sh "sudo docker build -t ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ."
+                    }
+                    slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}")
+                }
+            }
+        }
+        
+        stage('Build Backend Docker Image') {
+            steps {
+                script {
+                    def buildNumber = env.BUILD_NUMBER
+                    dir('backend') {
+                        sh "sudo docker build -t ${BACKEND_IMAGE}:v${buildNumber} ."
+                    }
+                    slackSend(channel: SLACK_CHANNEL, message: "Backend image build successful: ${BACKEND_IMAGE}:v${buildNumber}")
+                }
+            }
+        }
+
 
         stage('Tag and Push Docker Image to Nexus') {
             steps {
