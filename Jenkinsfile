@@ -35,25 +35,9 @@ pipeline {
     stage('SonarQube Code Analysis') {
             steps {
                 script {
-                    // Frontend SonarQube Analysis
-                    sh """
-                        sudo docker run --rm \
-                          -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
-                          -e SONAR_LOGIN="${SONAR_LOGIN}" \
-                          -v "\$WORKSPACE:/usr/src" \
-                          sonarsource/sonar-scanner-cli \
-                          sonar-scanner \
-                          -Dsonar.projectKey=${PROJECT_KEY} \
-                          -Dsonar.sources=front_app \
-                          -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/static/**,**/Dockerfile,**/README.md,**/svelte.config.js,**/tailwind.config.js,**/vite.config.js,**/postcss.config.js \
-                          -Dsonar.projectBaseDir=/usr/src \
-                          -Dsonar.login=${SONAR_LOGIN} \
-                          -X
-                    """
-                    
                     // Backend SonarQube Analysis for Python Files
                     sh """
-                        sudo docker run --rm \
+                        docker run --rm \
                           -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                           -e SONAR_LOGIN="${SONAR_LOGIN}" \
                           -v "\$WORKSPACE:/usr/src" \
@@ -69,6 +53,22 @@ pipeline {
                           -X
                     """
 
+                    // Frontend SonarQube Analysis
+                    sh """
+                        docker run --rm \
+                          -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
+                          -e SONAR_LOGIN="${SONAR_LOGIN}" \
+                          -v "\$WORKSPACE:/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          sonar-scanner \
+                          -Dsonar.projectKey=${PROJECT_KEY} \
+                          -Dsonar.sources=front_app \
+                          -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/static/**,**/Dockerfile,**/README.md,**/svelte.config.js,**/tailwind.config.js,**/vite.config.js,**/postcss.config.js \
+                          -Dsonar.projectBaseDir=/usr/src \
+                          -Dsonar.login=${SONAR_LOGIN} \
+                          -X
+                    """
+
                     slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "SonarQube analysis completed successfully for frontend and backend.")
                 }
             }
@@ -78,7 +78,7 @@ pipeline {
             steps {
                 script {
                     dir('front_app') {
-                        sh "sudo docker build -t ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ."
+                        sh "docker build -t ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ."
                     }
                     slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Frontend image build successful: ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}")
                 }
@@ -90,7 +90,7 @@ pipeline {
                 script {
                     def buildNumber = env.BUILD_NUMBER
                     dir('backend') {
-                        sh "sudo docker build -t ${BACKEND_IMAGE}:v${buildNumber} ."
+                        sh "docker build -t ${BACKEND_IMAGE}:v${buildNumber} ."
                     }
                     slackSend(channel: SLACK_CHANNEL, message: "Backend image build successful: ${BACKEND_IMAGE}:v${buildNumber}")
                 }
@@ -105,13 +105,13 @@ pipeline {
                         def fullImageName = "${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:v${env.BUILD_NUMBER}"
 
                         // Tag the Docker image with the build number
-                        sh "sudo docker tag ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
+                        sh "docker tag ${FRONTEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
 
                         // Log in to the Docker registry
-                        sh "sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
+                        sh "docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
 
                         // Push the tagged Docker image to Nexus
-                        sh "sudo docker push ${fullImageName}"
+                        sh "docker push ${fullImageName}"
 
                         slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Docker image pushed successfully: ${fullImageName}")
                     }
@@ -125,13 +125,13 @@ pipeline {
                         def fullImageName = "${DOCKER_REGISTRY}/${BACKEND_IMAGE}:v${env.BUILD_NUMBER}"
 
                         // Tag the Docker image with the build number
-                        sh "sudo docker tag ${BACKEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
+                        sh "docker tag ${BACKEND_IMAGE}:v${env.BUILD_NUMBER} ${fullImageName}"
 
                         // Log in to the Docker registry
-                        sh "sudo docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
+                        sh "docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD ${DOCKER_REGISTRY}"
 
                         // Push the tagged Docker image to Nexus
-                        sh "sudo docker push ${fullImageName}"
+                        sh "docker push ${fullImageName}"
 
                         slackSend(channel: SLACK_CHANNEL, tokenCredentialId: SLACK_CREDENTIALS_ID, message: "Docker image pushed successfully: ${fullImageName}")
                     }
