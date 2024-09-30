@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        GIT_USERNAME = 'Govindharamanathan333' // Replace with the GitHub username
+        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt' // Replace with your repository URL
         REPO_DIR = 'thunderbolt' // Name of the directory where the repo will be cloned
     }
 
@@ -24,29 +24,23 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository using the GitHub username
-                    echo "Cloning repository for user: ${GIT_USERNAME}"
-                    sh "git clone https://github.com/${GIT_USERNAME}/thunderbolt.git"
-                }
-            }
-        }
+                    // Clone the repository
+                    echo "Cloning repository: ${REPO_URL}"
+                    sh "git clone ${REPO_URL}"
 
-        stage('Get Latest Commit Info') {
-            steps {
-                script {
-                    // Get the latest commit message from the cloned repository
-                    def latestCommitMessage = sh(
-                        script: "cd ${REPO_DIR} && git log -1 --pretty=%B", 
-                        returnStdout: true
-                    ).trim()
-                    echo "Latest commit message: ${latestCommitMessage}"
+                    // Navigate to the repository directory
+                    dir(REPO_DIR) {
+                        // Get the latest commit ID and message
+                        def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                        def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
 
-                    // Get the latest commit author
-                    def latestCommitAuthor = sh(
-                        script: "cd ${REPO_DIR} && git log -1 --pretty=%an", 
-                        returnStdout: true
-                    ).trim()
-                    echo "Latest commit author: ${latestCommitAuthor}"
+                        // Store them in environment variables for later use
+                        env.COMMIT_ID = commitId
+                        env.COMMIT_MESSAGE = commitMessage
+
+                        echo "Latest Commit ID: ${commitId}"
+                        echo "Latest Commit Message: ${commitMessage}"
+                    }
                 }
             }
         }
@@ -67,10 +61,9 @@ pipeline {
                         - *Job Name*: ${jobName}
                         - *Build Number*: ${buildNumber}
                         - *Triggered By*: ${buildUser}
-                        - *Repository*: https://github.com/${GIT_USERNAME}/thunderbolt
-                        - *Latest Commit Author*: ${latestCommitAuthor}
-                        - *Latest Commit Message*: ${latestCommitMessage}
                         - *Build URL*: ${buildUrl}
+                        - *Commit ID*: ${env.COMMIT_ID}
+                        - *Commit Message*: ${env.COMMIT_MESSAGE}
                         """
                     )
                 }
