@@ -1,1 +1,67 @@
+pipeline {
+    agent any
+
+    environment {
+        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt' // Replace with your repository URL
+        REPO_DIR = 'thunderbolt' // Name of the directory where the repo will be cloned
+    }
+
+    stages {
+        stage('Check & Clean Existing Repository') {
+            steps {
+                script {
+                    // Check if the repository directory exists
+                    if (fileExists(REPO_DIR)) {
+                        echo "Repository directory ${REPO_DIR} already exists. Deleting..."
+                        sh "rm -rf ${REPO_DIR}" // Remove the existing directory
+                    } else {
+                        echo "No existing repository found. Proceeding to clone."
+                    }
+                }
+            }
+        }
+
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Clone the repository
+                    echo "Cloning repository: ${REPO_URL}"
+                    sh "git clone ${REPO_URL}"
+                }
+            }
+        }
+
+        stage('Send Notification') {
+            steps {
+                script {
+                    // Get Jenkins build details
+                    def buildUser = env.BUILD_USER_ID ?: 'unknown' // Get the user who triggered the build
+                    def buildNumber = env.BUILD_NUMBER // Jenkins build number
+                    def jobName = env.JOB_NAME // Jenkins job name
+                    def buildUrl = env.BUILD_URL // Jenkins build URL
+
+                    // Send a custom notification to Rocket.Chat
+                    rocketSend(
+                        message: """
+                        *Build Notification:*
+                        - *Job Name*: ${jobName}
+                        - *Build Number*: ${buildNumber}
+                        - *Triggered By*: ${buildUser}
+                        - *Build URL*: ${buildUrl}
+                        """
+                    )
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed.'
+        }
+    }
+}
 
