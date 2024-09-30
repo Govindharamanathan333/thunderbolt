@@ -2,15 +2,15 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt' // Replace with your repository URL
-        REPO_DIR = 'thunderbolt' // Name of the directory where the repo will be cloned
+        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt' // Repository URL
+        REPO_DIR = 'thunderbolt' // Directory name for the cloned repository
     }
 
     stages {
         stage('Check & Clean Existing Repository') {
             steps {
                 script {
-                    // Check if the repository directory exists
+                    // Check if the repository directory exists and delete it if it does
                     if (fileExists(REPO_DIR)) {
                         echo "Repository directory ${REPO_DIR} already exists. Deleting..."
                         sh "rm -rf ${REPO_DIR}" // Remove the existing directory
@@ -28,18 +28,22 @@ pipeline {
                     echo "Cloning repository: ${REPO_URL}"
                     sh "git clone ${REPO_URL}"
 
-                    // Navigate to the repository directory
+                    // Navigate into the cloned repository directory
                     dir(REPO_DIR) {
-                        // Get the latest commit ID and message
+                        // Retrieve the latest commit ID and message
                         def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
                         def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
 
-                        // Store them in environment variables for later use
+                        // Store commit details in environment variables for later use
                         env.COMMIT_ID = commitId
                         env.COMMIT_MESSAGE = commitMessage
 
                         echo "Latest Commit ID: ${commitId}"
                         echo "Latest Commit Message: ${commitMessage}"
+
+                        // Optionally retrieve committer details if needed
+                        env.GIT_COMMITTER_NAME = sh(script: "git log -1 --pretty=%cn", returnStdout: true).trim()
+                        env.GIT_COMMITTER_EMAIL = sh(script: "git log -1 --pretty=%ce", returnStdout: true).trim()
                     }
                 }
             }
@@ -64,6 +68,8 @@ pipeline {
                         - *Build URL*: ${buildUrl}
                         - *Commit ID*: ${env.COMMIT_ID}
                         - *Commit Message*: ${env.COMMIT_MESSAGE}
+                        - *Committer Name*: ${env.GIT_COMMITTER_NAME}
+                        - *Committer Email*: ${env.GIT_COMMITTER_EMAIL}
                         """
                     )
                 }
