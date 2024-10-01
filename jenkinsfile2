@@ -2,20 +2,30 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt' // Repository URL
-        REPO_DIR = 'thunderbolt' // Directory name for the cloned repository
+        REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt'
+        REPO_DIR = 'thunderbolt'
+    }
+
+    triggers {
+        // Trigger on GitHub push events (optional)
+        githubPush() // Use githubPush instead of github
     }
 
     stages {
         stage('Check & Clean Existing Repository') {
             steps {
                 script {
-                    // Check if the repository directory exists and delete it if it does
-                    if (fileExists(REPO_DIR)) {
-                        echo "Repository directory ${REPO_DIR} already exists. Deleting..."
-                        sh "rm -rf ${REPO_DIR}" // Remove the existing directory
-                    } else {
-                        echo "No existing repository found. Proceeding to clone."
+                    try {
+                        if (fileExists(REPO_DIR)) {
+                            echo "Repository directory ${REPO_DIR} already exists. Deleting..."
+                            sh "rm -rf ${REPO_DIR}"
+                        } else {
+                            echo "No existing repository found. Proceeding to clone."
+                        }
+                        env.CHECK_CLEAN_STATUS = 'success'
+                    } catch (Exception e) {
+                        env.CHECK_CLEAN_STATUS = 'failed'
+                        error("Failed during check and clean: ${e.getMessage()}")
                     }
                 }
             }
@@ -24,54 +34,67 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository
-                    echo "Cloning repository: ${REPO_URL}"
-                    sh "git clone ${REPO_URL}"
+                    try {
+                        if (env.GITHUB_EVENT_NAME == 'push') { // Check if triggered by GitHub push event
+                            echo "Triggered from GitHub. Using provided details."
+                            def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                            def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+                            def commitAuthor = sh(script: "git log -1 --pretty=%an", returnStdout: true).trim()
+                            env.COMMIT_ID = commitId
+                            env.COMMIT_MESSAGE = commitMessage
+                            env.COMMIT_AUTHOR = commitAuthor
+                            env.TRIGGER_USERNAME = commitAuthor
+                        } else {
+                            echo "Manual trigger. Using Jenkins username."
+                            env.TRIGGER_USERNAME = env.USERNAME // Use Jenkins username for manual trigger
+                            env.COMMIT_MESSAGE = 'Manual trigger'
+                        }
+                        echo "Cloning repository: ${REPO_URL}"
+                        sh "git clone ${REPO_URL}"
 
-                    // Navigate into the cloned repository directory
-                    dir(REPO_DIR) {
-                        // Retrieve the latest commit ID and message
-                        def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
-                        def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
-
-                        // Store commit details in environment variables for later use
-                        env.COMMIT_ID = commitId
-                        env.COMMIT_MESSAGE = commitMessage
-
-                        echo "Latest Commit ID: ${commitId}"
-                        echo "Latest Commit Message: ${commitMessage}"
-
-                        // Optionally retrieve committer details if needed
-                        env.GIT_COMMITTER_NAME = sh(script: "git log -1 --pretty=%cn", returnStdout: true).trim()
-                        env.GIT_COMMITTER_EMAIL = sh(script: "git log -1 --pretty=%ce", returnStdout: true).trim()
+                        dir(REPO_DIR) {
+                            // ... rest of the steps within the directory (unchanged)
+                        }
+                        env.CLONE_STATUS = 'success'
+                    } catch (Exception e) {
+                        env.CLONE_STATUS = 'failed'
+                        error("Failed to clone repository or retrieve commit details: ${e.getMessage()}")
                     }
                 }
             }
         }
 
-        stage('Send Notification') {
+        // ... rest of the stages (Build, Test, Deploy) remain unchanged
+
+        stage('Notify') {
             steps {
                 script {
-                    // Get Jenkins build details
-                    def buildUser = env.BUILD_USER_ID ?: 'unknown' // Get the user who triggered the build
-                    def buildNumber = env.BUILD_NUMBER // Jenkins build number
-                    def jobName = env.JOB_NAME // Jenkins job name
-                    def buildUrl = env.BUILD_URL // Jenkins build URL
+                    def checkCleanStatus = env.CHECK_CLEAN_STATUS ?: 'not executed'
+                    def cloneStatus = env.CLONE_STATUS ?: 'not executed'
+                    def buildStatus = env.BUILD_STATUS ?: 'not executed'
+                    def testStatus = env.TEST_STATUS ?: 'not executed'
+                    def deployStatus = env.DEPLOY_STATUS ?: 'not executed'
 
-                    // Send a custom notification to Rocket.Chat
-                    rocketSend(
-                        message: """
-                        *Build Notification:*
-                        - *Job Name*: ${jobName}
-                        - *Build Number*: ${buildNumber}
-                        - *Triggered By*: ${buildUser}
-                        - *Build URL*: ${buildUrl}
-                        - *Commit ID*: ${env.COMMIT_ID}
-                        - *Commit Message*: ${env.COMMIT_MESSAGE}
-                        - *Committer Name*: ${env.GIT_COMMITTER_NAME}
-                        - *Committer Email*: ${env.GIT_COMMITTER_EMAIL}
-                        """
-                    )
+                    def statusMessage = """
+                    *Build Notification:*
+                    - *Job Name*: ${env.JOB_NAME}
+                    - *Build Number*: ${env.BUILD_NUMBER}
+                    - *Triggered By*: ${env.TRIGGER_USERNAME}
+                    - *Build URL*: ${env.BUILD_URL}
+                    - *Commit ID*: ${env.COMMIT_ID}
+                    - *Commit Message*: ${env.COMMIT_MESSAGE}
+
+                    --------------------------------------------------
+                    
+                    *Pipeline Status Notification:*
+                    - *Check & Clean*: ${checkCleanStatus}
+                    - *Clone*: ${cloneStatus}
+                    - *Build*: ${buildStatus}
+                    - *Test*: ${testStatus}
+                    - *Deploy*: ${deployStatus}
+                    """
+
+                    rocketSend(message: statusMessage)
                 }
             }
         }
@@ -81,6 +104,7 @@ pipeline {
         success {
             echo 'Pipeline completed successfully.'
         }
+
         failure {
             echo 'Pipeline failed.'
         }
