@@ -7,8 +7,8 @@ pipeline {
     }
 
     triggers {
-        // Trigger on GitHub push events (optional)
-        githubPush() // Use githubPush instead of github
+        // Trigger on GitHub push events
+        githubPush()
     }
 
     stages {
@@ -35,25 +35,28 @@ pipeline {
             steps {
                 script {
                     try {
-                        if (env.GITHUB_EVENT_NAME == 'push') { // Check if triggered by GitHub push event
-                            echo "Triggered from GitHub. Using provided details."
-                            def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
-                            def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
-                            def commitAuthor = sh(script: "git log -1 --pretty=%an", returnStdout: true).trim()
-                            env.COMMIT_ID = commitId
-                            env.COMMIT_MESSAGE = commitMessage
-                            env.COMMIT_AUTHOR = commitAuthor
-                            env.TRIGGER_USERNAME = commitAuthor
-                        } else {
-                            echo "Manual trigger. Using Jenkins username."
-                            env.TRIGGER_USERNAME = env.USERNAME // Use Jenkins username for manual trigger
-                            env.COMMIT_MESSAGE = 'Manual trigger'
-                        }
                         echo "Cloning repository: ${REPO_URL}"
                         sh "git clone ${REPO_URL}"
 
                         dir(REPO_DIR) {
-                            // ... rest of the steps within the directory (unchanged)
+                            // Get the latest commit details
+                            def commitId = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                            def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+                            def commitAuthor = sh(script: "git log -1 --pretty=%an", returnStdout: true).trim()
+                            
+                            env.COMMIT_ID = commitId
+                            env.COMMIT_MESSAGE = commitMessage
+                            env.COMMIT_AUTHOR = commitAuthor
+                            
+                            // Determine if triggered manually or by GitHub push
+                            def userCause = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)
+                            if (userCause) {
+                                env.TRIGGER_USERNAME = userCause.getUserId()
+                                echo "Build triggered manually by Jenkins user: ${env.TRIGGER_USERNAME}"
+                            } else {
+                                env.TRIGGER_USERNAME = commitAuthor
+                                echo "Build triggered by GitHub push event. Last commit author: ${commitAuthor}"
+                            }
                         }
                         env.CLONE_STATUS = 'success'
                     } catch (Exception e) {
@@ -64,43 +67,90 @@ pipeline {
             }
         }
 
-        // ... rest of the stages (Build, Test, Deploy) remain unchanged
-
-        stage('Notify') {
+        stage('Build') {
             steps {
                 script {
-                    def checkCleanStatus = env.CHECK_CLEAN_STATUS ?: 'not executed'
-                    def cloneStatus = env.CLONE_STATUS ?: 'not executed'
-                    def buildStatus = env.BUILD_STATUS ?: 'not executed'
-                    def testStatus = env.TEST_STATUS ?: 'not executed'
-                    def deployStatus = env.DEPLOY_STATUS ?: 'not executed'
+                    try {
+                        echo 'Building...'
+                        // Add build logic here
+                        env.BUILD_STATUS = 'success'
+                    } catch (Exception e) {
+                        env.BUILD_STATUS = 'failed'
+                        error("Build failed: ${e.message}")
+                    }
+                }
+            }
+        }
 
-                    def statusMessage = """
-                    *Build Notification:*
-                    - *Job Name*: ${env.JOB_NAME}
-                    - *Build Number*: ${env.BUILD_NUMBER}
-                    - *Triggered By*: ${env.TRIGGER_USERNAME}
-                    - *Build URL*: ${env.BUILD_URL}
-                    - *Commit ID*: ${env.COMMIT_ID}
-                    - *Commit Message*: ${env.COMMIT_MESSAGE}
+        stage('Test') {
+            steps {
+                script {
+                    try {
+                        echo 'Testing...'
+                        // Add test logic here
+                        env.TEST_STATUS = 'success'
+                    } catch (Exception e) {
+                        env.TEST_STATUS = 'failed'
+                        error("Test failed: ${e.message}")
+                    }
+                }
+            }
+        }
 
-                    --------------------------------------------------
-                    
-                    *Pipeline Status Notification:*
-                    - *Check & Clean*: ${checkCleanStatus}
-                    - *Clone*: ${cloneStatus}
-                    - *Build*: ${buildStatus}
-                    - *Test*: ${testStatus}
-                    - *Deploy*: ${deployStatus}
-                    """
-
-                    rocketSend(message: statusMessage)
+        stage('Deploy') {
+            steps {
+                script {
+                    try {
+                        echo 'Deploying...'
+                        // Add deployment logic here
+                        env.DEPLOY_STATUS = 'success'
+                    } catch (Exception e) {
+                        env.DEPLOY_STATUS = 'failed'
+                        error("Deployment failed: ${e.message}")
+                    }
                 }
             }
         }
     }
 
     post {
+        always {
+            script {
+                // Ensure TRIGGER_USERNAME is not null or empty
+                def triggerUser = env.TRIGGER_USERNAME ?: 'Manual trigger by Jenkins user'
+                
+                // Define status messages for each stage
+                def checkCleanStatus = env.CHECK_CLEAN_STATUS ?: 'not executed'
+                def cloneStatus = env.CLONE_STATUS ?: 'not executed'
+                def buildStatus = env.BUILD_STATUS ?: 'not executed'
+                def testStatus = env.TEST_STATUS ?: 'not executed'
+                def deployStatus = env.DEPLOY_STATUS ?: 'not executed'
+
+                // Build notification message
+                def statusMessage = """
+                *Build Notification:*
+                - *Job Name*: ${env.JOB_NAME}
+                - *Build Number*: ${env.BUILD_NUMBER}
+                - *Triggered By*: ${triggerUser}
+                - *Build URL*: ${env.BUILD_URL}
+                - *Commit ID*: ${env.COMMIT_ID}
+                - *Commit Message*: ${env.COMMIT_MESSAGE}
+
+                --------------------------------------------------
+                
+                *Pipeline Status Notification:*
+                - *Check & Clean*: ${checkCleanStatus}
+                - *Clone*: ${cloneStatus}
+                - *Build*: ${buildStatus}
+                - *Test*: ${testStatus}
+                - *Deploy*: ${deployStatus}
+                """
+
+                // Send message to Rocket.Chat (assuming you have configured rocketSend)
+                rocketSend(message: statusMessage)
+            }
+        }
+
         success {
             echo 'Pipeline completed successfully.'
         }
