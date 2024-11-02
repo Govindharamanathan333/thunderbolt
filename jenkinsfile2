@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'master' }
 
     environment {
         REPO_URL = 'https://github.com/Govindharamanathan333/thunderbolt'
